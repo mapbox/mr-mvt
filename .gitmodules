@@ -1,0 +1,6 @@
+[submodule ".mason"]
+	path = .mason
+	url = https://github.com/mapbox/mason.git
+[submodule "deps/geojson-cpp"]
+	path = deps/geojson-cpp
+	url = https://github.com/mapbox/geojson-cpp.git
