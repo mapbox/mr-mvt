@@ -1,3 +1,5 @@
+#pragma once
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunknown-pragmas" // clang+gcc
 #pragma GCC diagnostic ignored "-Wpragmas"         // gcc

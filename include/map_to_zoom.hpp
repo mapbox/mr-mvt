@@ -1,3 +1,7 @@
+#pragma once
+
+#include "douglas_peucker.hpp"
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunknown-pragmas" // clang+gcc
 #pragma GCC diagnostic ignored "-Wpragmas"         // gcc
@@ -21,6 +25,7 @@ static const double MAX_LATITUDE = R2D * (2 * std::atan(std::exp(M_PI)) - (M_PI 
 
 struct to_tile_coord_visitor {
     double size;
+    double simplify_distance;
 
     geometry::point<std::int64_t> convert(geometry::point<double> const& pt) {
         std::size_t x = 0;
@@ -48,7 +53,12 @@ struct to_tile_coord_visitor {
         for (auto const& g : geom) {
             new_geom.push_back(convert(g));
         }
-        return new_geom;
+        if (new_geom.size() <= 4) {
+            return new_geom;
+        }
+        geometry::linear_ring<std::int64_t> simplified;
+        douglas_peucker<std::int64_t>(new_geom, std::back_inserter(simplified), simplify_distance);
+        return simplified;
     }
 
     geometry::polygon<std::int64_t> convert(geometry::polygon<double> const& geom) {
@@ -75,7 +85,12 @@ struct to_tile_coord_visitor {
         for (auto const& g : geom) {
             new_geom.push_back(convert(g));
         }
-        return new_geom;
+        if (new_geom.size() <= 4) {
+            return new_geom;
+        }
+        geometry::line_string<std::int64_t> simplified;
+        douglas_peucker<std::int64_t>(new_geom, std::back_inserter(simplified), simplify_distance);
+        return simplified;
     }
 
     geometry::multi_line_string<std::int64_t> convert(geometry::multi_line_string<double> const& geom) {
