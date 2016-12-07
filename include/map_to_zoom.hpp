@@ -28,19 +28,19 @@ struct to_tile_coord_visitor {
     double simplify_distance;
 
     geometry::point<std::int64_t> convert(geometry::point<double> const& pt) {
-        std::size_t x = 0;
-        std::size_t y = 0;
+        std::int64_t x = 0;
+        std::int64_t y = 0;
         if (pt.x > 180.0) { 
-            x = size;
+            x = size - 1;
         } else if (pt.x < -180.0) { 
             x = 0;
         } else {
             x = std::round((pt.x + 180.0) * (size / 360.0));
         }
-        if (y > MAX_LATITUDE) {
+        if (pt.y > MAX_LATITUDE) {
             y = 0;
-        } else if (y < -MAX_LATITUDE) {
-            y = size;
+        } else if (pt.y < -MAX_LATITUDE) {
+            y = size - 1;
         } else {
             y = std::round((std::log(std::tan((90.0 + pt.y) * (M_PI / 360.0))) + M_PI) * (size / (2.0 * M_PI)));
         }
