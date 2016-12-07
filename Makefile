@@ -25,4 +25,4 @@ build/all: mason_packages
 	$(CXX) src/map_to_tile.cpp -o m2t -isystem$(MASON_HOME)/include $(CXXFLAGS) $(LDFLAGS)
 
 test: build/all
-	time cat test/fixtures/countries.geojson | ./m2f foo | ./m2z --min 0 --max 6 | ./m2t > out.geojson
+	time cat test/fixtures/countries.geojson | ./m2f foo | ./m2z --min 0 --max 6 | ./m2t | sort > out.geojson
