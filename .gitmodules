@@ -7,3 +7,6 @@
 [submodule "deps/wagyu"]
 	path = deps/wagyu
 	url = https://github.com/mapbox/wagyu.git
+[submodule "deps/vector-tile"]
+	path = deps/vector-tile
+	url = https://github.com/mapbox/vector-tile.git

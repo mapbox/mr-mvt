@@ -2,7 +2,7 @@
 
 int main(int argc, char* argv[]) {
     std::string layer_name("layer");
-    if (argc < 1) {
+    if (argc > 1) {
         layer_name = std::string(argv[1]);
     }
     mapbox::geojson::geojson<double> json = mapbox::mrmvt::geojson_std_in<double>();

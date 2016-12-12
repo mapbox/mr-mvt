@@ -34,8 +34,6 @@ inline void map_to_tile() {
         for (auto const& t : tiles) {
             auto og = clip(feature.geometry, t.x, t.y, 0);
             if (!og) {
-
-                std::cout << zoom_level << " " << t.x << " " << t.y << " " << layer_name << " {}" << std::endl;
                 continue;
             }
             geometry::feature<std::int64_t> f { 
@@ -43,7 +41,7 @@ inline void map_to_tile() {
                 feature.properties, 
                 feature.id
             };
-            std::cout << zoom_level << " " << t.x << " " << t.y << " " << layer_name << " " << mapbox::geojson::stringify<std::int64_t>(f) << std::endl;
+            std::cout << zoom_level << "," << t.x << "," << t.y << " " << layer_name << " " << mapbox::geojson::stringify<std::int64_t>(f) << std::endl;
         }
     }
 }
