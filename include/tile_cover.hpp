@@ -97,7 +97,7 @@ inline void line_cover(tile_coordinates & tiles,
         std::int64_t i_dy = i_y1 - i_y0;
         if (i_dx == 0 && i_dy == 0) {
             auto const& back = tiles.back();
-            if (back.x != i_x0 || back.y != i_y0) {
+            if (!tiles.empty() || back.x != i_x0 || back.y != i_y0) {
                 tiles.push_back(tile_coordinate { static_cast<std::uint32_t>(i_x0), static_cast<std::uint32_t>(i_y0) });
             }
             continue;
@@ -155,6 +155,7 @@ inline tile_coordinates ring_cover(std::uint32_t extent,
         std::int64_t i_dy = i_y1 - i_y0;
         if (i_dx == 0 && i_dy == 0) {
             if (tiles.empty()) {
+                std::clog << "  a " << i_x0 << "," << i_y0 << std::endl;
                 tiles.push_back(tile_coordinate { static_cast<std::uint32_t>(i_x0), static_cast<std::uint32_t>(i_y0) });
             }
             continue;
@@ -166,9 +167,11 @@ inline tile_coordinates ring_cover(std::uint32_t extent,
         double tdx = std::fabs(sx / dx);
         double tdy = std::fabs(sy / dy);
         
-        if (tiles.empty() || tiles.back().y != i_y0) {
+        if (tiles.empty() || tiles.back().y != i_y0 && tiles.back().x != i_x0) {
+            std::clog << "  b " << i_x0 << "," << i_y0 << std::endl;
             tiles.push_back(tile_coordinate { static_cast<std::uint32_t>(i_x0), static_cast<std::uint32_t>(i_y0) });
         }
+
         std::int64_t x = i_x0;
         std::int64_t y = i_y0;
         while (t_max_x < 1.0 || t_max_y < 1.0) {
@@ -180,6 +183,7 @@ inline tile_coordinates ring_cover(std::uint32_t extent,
                 y += static_cast<std::int64_t>(sy);
             }
             if (tiles.empty() || tiles.back().y != y) {
+                std::clog << "  c " << x << "," << y << std::endl;
                 tiles.push_back(tile_coordinate { static_cast<std::uint32_t>(x), static_cast<std::uint32_t>(y) });
             }
         }

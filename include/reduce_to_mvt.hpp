@@ -43,7 +43,7 @@ inline void add_to_fields(std::map<std::string, json_field_type> & fields,
                           geometry::property_map const& prop_map) {
     for (auto const& pm : prop_map) {
         auto f = fields.find(pm.first);
-        if (f != fields.end()) {
+        if (f == fields.end()) {
             fields.emplace(pm.first, geometry::value::visit(pm.second, value_type_visitor()));
         }
     }

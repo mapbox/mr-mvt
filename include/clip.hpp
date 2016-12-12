@@ -139,7 +139,7 @@ struct clip_visitor {
 
         mapbox::geometry::multi_polygon<std::int64_t> solution;
         clipper.execute(mapbox::geometry::wagyu::clip_type_intersection, solution,
-                        mapbox::geometry::wagyu::fill_type_negative,
+                        mapbox::geometry::wagyu::fill_type_positive,
                         mapbox::geometry::wagyu::fill_type_even_odd);
         multi_polygon_offset(solution, b.unbuffered_min_x, b.unbuffered_min_y);
         if (solution.empty()) {
@@ -172,7 +172,7 @@ struct clip_visitor {
 
         mapbox::geometry::multi_polygon<std::int64_t> solution;
         clipper.execute(mapbox::geometry::wagyu::clip_type_intersection, solution,
-                        mapbox::geometry::wagyu::fill_type_negative,
+                        mapbox::geometry::wagyu::fill_type_positive,
                         mapbox::geometry::wagyu::fill_type_even_odd);
         multi_polygon_offset(solution, b.unbuffered_min_x, b.unbuffered_min_y);
         if (solution.empty()) {

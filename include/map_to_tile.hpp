@@ -31,7 +31,9 @@ inline void map_to_tile() {
            std::getline(std::cin, feature_str)) {
         auto feature = geojson::parse_feature<std::int64_t>(feature_str);
         auto tiles = tile_cover::get_tiles(feature.geometry, 4096);
+        std::clog << "Tiles for zoom: " << zoom_level << std::endl;
         for (auto const& t : tiles) {
+            std::clog << t.x << ", " << t.y << std::endl;
             auto og = clip(feature.geometry, t.x, t.y, 0);
             if (!og) {
                 continue;

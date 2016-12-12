@@ -94,7 +94,7 @@ void mbtiles_write_tile(sqlite_db const& db, int z, int x, int y, const char *da
     sqlite3_clear_bindings(stmt);
     sqlite3_bind_int(stmt, 1, z);
     sqlite3_bind_int(stmt, 2, x);
-    sqlite3_bind_int(stmt, 3, y);
+    sqlite3_bind_int(stmt, 3, (1 << z) - 1 - y);
     sqlite3_bind_blob(stmt, 4, data, size, NULL);
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         std::cerr << "SQLite Error: tile insert failed: " << sqlite3_errmsg(db.db.get()) << std::endl;
@@ -181,6 +181,28 @@ void mbtiles_write_metadata(sqlite_db const& db,
         throw std::runtime_error(err_msg.str());
     }
     sqlite3_free(sql);
+    
+    sql = sqlite3_mprintf("INSERT INTO metadata (name, value) VALUES ('center', '0.0,0.0,%d');", maxzoom);
+    if (sqlite3_exec(db.db.get(), sql, NULL, NULL, &err) != SQLITE_OK) {
+        sqlite3_free(sql);
+        std::ostringstream err_msg;
+        err_msg << "SQLite Error: failed to set center in metadata: " << err << std::endl;
+        throw std::runtime_error(err_msg.str());
+    }
+    sqlite3_free(sql);
+    
+    double minlon = -180;
+    double minlat = -85.05112877980659;
+    double maxlon = 180;
+    double maxlat = 85.0511287798066;
+    sql = sqlite3_mprintf("INSERT INTO metadata (name, value) VALUES ('bounds', '%f,%f,%f,%f');", minlon, minlat, maxlon, maxlat);
+    if (sqlite3_exec(db.db.get(), sql, NULL, NULL, &err) != SQLITE_OK) {
+        sqlite3_free(sql);
+        std::ostringstream err_msg;
+        err_msg << "SQLite Error: failed to set bounds in metadata: " << err << std::endl;
+        throw std::runtime_error(err_msg.str());
+    }
+    sqlite3_free(sql);
 
     sql = sqlite3_mprintf("INSERT INTO metadata (name, value) VALUES ('type', %Q);", "overlay");
     if (sqlite3_exec(db.db.get(), sql, NULL, NULL, &err) != SQLITE_OK) {
@@ -237,6 +259,7 @@ void mbtiles_write_metadata(sqlite_db const& db,
 		buf << "} }";
     }
 	buf << " ] }";
+    std::clog << buf.str() << std::endl;
 
     sql = sqlite3_mprintf("INSERT INTO metadata (name, value) VALUES ('json', %Q);", buf.str().c_str());
     if (sqlite3_exec(db.db.get(), sql, NULL, NULL, &err) != SQLITE_OK) {

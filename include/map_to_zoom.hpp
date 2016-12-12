@@ -42,7 +42,7 @@ struct to_tile_coord_visitor {
         } else if (pt.y < -MAX_LATITUDE) {
             y = size - 1;
         } else {
-            y = std::round((std::log(std::tan((90.0 + pt.y) * (M_PI / 360.0))) + M_PI) * (size / (2.0 * M_PI)));
+            y = size - std::round((std::log(std::tan((90.0 + pt.y) * (M_PI / 360.0))) + M_PI) * (size / (2.0 * M_PI)));
         }
         return geometry::point<std::int64_t>(x, y);
     }

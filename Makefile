@@ -28,9 +28,9 @@ mason_packages: $(MASON)
 build/all: mason_packages
 	$(CXX) src/map_to_features.cpp -o m2f -isystem$(MASON_HOME)/include $(CXXFLAGS) $(LDFLAGS)
 	$(CXX) src/map_to_zoom.cpp -o m2z -isystem$(MASON_HOME)/include $(CXXFLAGS) $(LDFLAGS)
-	$(CXX) src/map_to_tile.cpp -o m2t -isystem$(MASON_HOME)/include $(CXXFLAGS) $(LDFLAGS)
+	$(CXX) src/map_to_tile.cpp -o m2t -isystem$(MASON_HOME)/include $(CXXFLAGS) $(LDFLAGS) $(DEBUG_FLAGS)
 	$(CXX) src/reduce_to_mvt.cpp -o r2mvt -isystem$(MASON_HOME)/include -lsqlite3 $(CXXFLAGS) $(LDFLAGS)
 
 test: build/all
 	rm -f out.mbtiles
-	time cat test/fixtures/countries.geojson | ./m2f foo | ./m2z --min 0 --max 6 | ./m2t | sort | tee out.geojson | ./r2mvt out.mbtiles
+	time cat test/fixtures/countries.geojson | ./m2f foo | grep France | ./m2z --min 1 --max 1 | ./m2t | sort | tee out.geojson | ./r2mvt out.mbtiles
