@@ -259,7 +259,6 @@ void mbtiles_write_metadata(sqlite_db const& db,
 		buf << "} }";
     }
 	buf << " ] }";
-    std::clog << buf.str() << std::endl;
 
     sql = sqlite3_mprintf("INSERT INTO metadata (name, value) VALUES ('json', %Q);", buf.str().c_str());
     if (sqlite3_exec(db.db.get(), sql, NULL, NULL, &err) != SQLITE_OK) {

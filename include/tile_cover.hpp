@@ -128,9 +128,10 @@ inline void line_cover(tile_coordinates & tiles,
     }
 }
 
-inline tile_coordinates ring_cover(std::uint32_t extent, 
-                                   mapbox::geometry::linear_ring<std::int64_t> const& ring) {
-    tile_coordinates tiles;
+inline void ring_cover(tile_coordinates & partial_ring,
+                       tile_coordinates & all_tiles,
+                       std::uint32_t extent, 
+                       mapbox::geometry::linear_ring<std::int64_t> const& ring) {
     auto itr = ring.begin();
     double x1 = (static_cast<double>(itr->x) / static_cast<double>(extent));
     double x0 = 0.0;
@@ -154,9 +155,11 @@ inline tile_coordinates ring_cover(std::uint32_t extent,
         std::int64_t i_dx = i_x1 - i_x0;
         std::int64_t i_dy = i_y1 - i_y0;
         if (i_dx == 0 && i_dy == 0) {
-            if (tiles.empty()) {
-                std::clog << "  a " << i_x0 << "," << i_y0 << std::endl;
-                tiles.push_back(tile_coordinate { static_cast<std::uint32_t>(i_x0), static_cast<std::uint32_t>(i_y0) });
+            if (partial_ring.empty()) {
+                partial_ring.push_back(tile_coordinate { static_cast<std::uint32_t>(i_x0), static_cast<std::uint32_t>(i_y0) });
+            }
+            if (all_tiles.empty()) {
+                all_tiles.push_back(tile_coordinate { static_cast<std::uint32_t>(i_x0), static_cast<std::uint32_t>(i_y0) });
             }
             continue;
         }
@@ -167,9 +170,11 @@ inline tile_coordinates ring_cover(std::uint32_t extent,
         double tdx = std::fabs(sx / dx);
         double tdy = std::fabs(sy / dy);
         
-        if (tiles.empty() || tiles.back().y != i_y0 && tiles.back().x != i_x0) {
-            std::clog << "  b " << i_x0 << "," << i_y0 << std::endl;
-            tiles.push_back(tile_coordinate { static_cast<std::uint32_t>(i_x0), static_cast<std::uint32_t>(i_y0) });
+        if (partial_ring.empty() || partial_ring.back().y != i_y0) {
+            partial_ring.push_back(tile_coordinate { static_cast<std::uint32_t>(i_x0), static_cast<std::uint32_t>(i_y0) });
+        }
+        if (all_tiles.empty() || all_tiles.back().x != i_x0 || all_tiles.back().y != i_y0) {
+            all_tiles.push_back(tile_coordinate { static_cast<std::uint32_t>(i_x0), static_cast<std::uint32_t>(i_y0) });
         }
 
         std::int64_t x = i_x0;
@@ -182,16 +187,17 @@ inline tile_coordinates ring_cover(std::uint32_t extent,
                 t_max_y += tdy;
                 y += static_cast<std::int64_t>(sy);
             }
-            if (tiles.empty() || tiles.back().y != y) {
-                std::clog << "  c " << x << "," << y << std::endl;
-                tiles.push_back(tile_coordinate { static_cast<std::uint32_t>(x), static_cast<std::uint32_t>(y) });
+            if (partial_ring.empty() || partial_ring.back().y != y) {
+                partial_ring.push_back(tile_coordinate { static_cast<std::uint32_t>(x), static_cast<std::uint32_t>(y) });
+            }
+            if (all_tiles.empty() || all_tiles.back().x != x || all_tiles.back().y != y) {
+                all_tiles.push_back(tile_coordinate { static_cast<std::uint32_t>(x), static_cast<std::uint32_t>(y) });
             }
         }
     }
-    if (tiles.size() > 1 && tiles.front().y == tiles.back().y) {
-        tiles.pop_back();
+    if (partial_ring.size() > 1 && partial_ring.front().y == partial_ring.back().y) {
+        partial_ring.pop_back();
     }
-    return tiles;
 }
 
 inline void polygon_cover(tile_coordinates & tiles,
@@ -199,32 +205,37 @@ inline void polygon_cover(tile_coordinates & tiles,
                           mapbox::geometry::polygon<std::int64_t> const& polygon) {
     tile_coordinates intersections;
     for (auto const& ring : polygon) {
-        tile_coordinates partial_ring = ring_cover(extent, ring);
-        if (partial_ring.size() < 3) {
-            tiles.insert(tiles.end(), partial_ring.begin(), partial_ring.end());
-            continue;
+        tile_coordinates partial_ring;
+        tile_coordinates all_tiles;
+        ring_cover(partial_ring, all_tiles, extent, ring);
+        if (partial_ring.size() >= 3) {
+            auto itr_1 = partial_ring.end();
+            --itr_1;
+            auto itr_2 = partial_ring.begin();
+            auto itr_3 = std::next(itr_2);
+            while (itr_2 != partial_ring.end()) {
+                if ((itr_2->y > itr_1->y || itr_2->y > itr_3->y) && // not local minimum
+                    (itr_2->y < itr_1->y || itr_2->y < itr_3->y) && // not local maximum
+                    itr_2->y != itr_3->y) {
+                    intersections.push_back(*itr_2);
+                }
+                ++itr_1;
+                ++itr_2;
+                ++itr_3;
+                if (itr_1 == partial_ring.end()) {
+                    itr_1 = partial_ring.begin();
+                }
+                if (itr_3 == partial_ring.end()) {
+                    itr_3 = partial_ring.begin();
+                }
+            }
         }
-        auto itr_1 = partial_ring.end();
-        --itr_1;
-        auto itr_2 = partial_ring.begin();
-        auto itr_3 = std::next(itr_2);
-        while (itr_2 != partial_ring.end()) {
-            if ((itr_2->y > itr_1->y || itr_2->y > itr_3->y) && // not local minimum
-                (itr_2->y < itr_1->y || itr_2->y < itr_3->y) && // not local maximum
-                itr_2->y != itr_3->y) {
-                intersections.push_back(*itr_2);
-            }
-            ++itr_1;
-            ++itr_2;
-            ++itr_3;
-            if (itr_1 == partial_ring.end()) {
-                itr_1 = partial_ring.begin();
-            }
-            if (itr_3 == partial_ring.end()) {
-                itr_3 = partial_ring.begin();
-            }
-        }
-        tiles.insert(tiles.end(), partial_ring.begin(), partial_ring.end());
+        std::sort(all_tiles.begin(), all_tiles.end(), 
+            [](tile_coordinate const& t1, tile_coordinate const& t2) {
+                return t1.y == t2.y ? t1.x < t2.x : t1.y < t2.y;
+            });
+        all_tiles.erase(std::unique(all_tiles.begin(), all_tiles.end()), all_tiles.end());
+        tiles.insert(tiles.end(), all_tiles.begin(), all_tiles.end());
     }
 
     std::sort(intersections.begin(), intersections.end(), 
