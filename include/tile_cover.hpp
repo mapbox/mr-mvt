@@ -53,10 +53,23 @@ inline std::basic_ostream<charT, traits>& operator<<(std::basic_ostream<charT, t
 struct tile_coordinate {
 	std::uint32_t x;
 	std::uint32_t y;
+    bool fill;
 };
 
 inline bool operator== (tile_coordinate const& a, tile_coordinate const& b) {
     return a.x == b.x && a.y == b.y;
+}
+
+inline bool operator< (tile_coordinate const& a, tile_coordinate const& b) {
+    if (a.y == b.y) {
+        if (a.x == b.x) {
+            return a.fill < b.fill;
+        } else {
+            return a.x < b.x;
+        }
+    } else {
+        return a.y < b.y;
+    }
 }
 
 using tile_coordinates = std::vector<tile_coordinate>;
@@ -98,7 +111,10 @@ inline void line_cover(tile_coordinates & tiles,
         if (i_dx == 0 && i_dy == 0) {
             auto const& back = tiles.back();
             if (!tiles.empty() || back.x != i_x0 || back.y != i_y0) {
-                tiles.push_back(tile_coordinate { static_cast<std::uint32_t>(i_x0), static_cast<std::uint32_t>(i_y0) });
+                tiles.push_back(tile_coordinate { 
+                        static_cast<std::uint32_t>(i_x0), 
+                        static_cast<std::uint32_t>(i_y0),
+                        false });
             }
             continue;
         }
@@ -111,7 +127,10 @@ inline void line_cover(tile_coordinates & tiles,
         
         auto const& back = tiles.back();
         if (back.x != i_x0 || back.y != i_y0) {
-            tiles.push_back(tile_coordinate { static_cast<std::uint32_t>(i_x0), static_cast<std::uint32_t>(i_y0) });
+            tiles.push_back(tile_coordinate { 
+                    static_cast<std::uint32_t>(i_x0), 
+                    static_cast<std::uint32_t>(i_y0),
+                    false });
         }
         std::int64_t x = i_x0;
         std::int64_t y = i_y0;
@@ -123,7 +142,10 @@ inline void line_cover(tile_coordinates & tiles,
                 t_max_y += tdy;
                 y += sy;
             }
-            tiles.push_back(tile_coordinate { static_cast<std::uint32_t>(x), static_cast<std::uint32_t>(y) });
+            tiles.push_back(tile_coordinate { 
+                    static_cast<std::uint32_t>(x), 
+                    static_cast<std::uint32_t>(y),
+                    false });
         }
     }
 }
@@ -156,10 +178,16 @@ inline void ring_cover(tile_coordinates & partial_ring,
         std::int64_t i_dy = i_y1 - i_y0;
         if (i_dx == 0 && i_dy == 0) {
             if (partial_ring.empty()) {
-                partial_ring.push_back(tile_coordinate { static_cast<std::uint32_t>(i_x0), static_cast<std::uint32_t>(i_y0) });
+                partial_ring.push_back(tile_coordinate { 
+                        static_cast<std::uint32_t>(i_x0),
+                        static_cast<std::uint32_t>(i_y0),
+                        false });
             }
             if (all_tiles.empty()) {
-                all_tiles.push_back(tile_coordinate { static_cast<std::uint32_t>(i_x0), static_cast<std::uint32_t>(i_y0) });
+                all_tiles.push_back(tile_coordinate { 
+                        static_cast<std::uint32_t>(i_x0), 
+                        static_cast<std::uint32_t>(i_y0),
+                        false });
             }
             continue;
         }
@@ -171,10 +199,16 @@ inline void ring_cover(tile_coordinates & partial_ring,
         double tdy = std::fabs(sy / dy);
         
         if (partial_ring.empty() || partial_ring.back().y != i_y0) {
-            partial_ring.push_back(tile_coordinate { static_cast<std::uint32_t>(i_x0), static_cast<std::uint32_t>(i_y0) });
+            partial_ring.push_back(tile_coordinate { 
+                    static_cast<std::uint32_t>(i_x0),
+                    static_cast<std::uint32_t>(i_y0),
+                    false });
         }
         if (all_tiles.empty() || all_tiles.back().x != i_x0 || all_tiles.back().y != i_y0) {
-            all_tiles.push_back(tile_coordinate { static_cast<std::uint32_t>(i_x0), static_cast<std::uint32_t>(i_y0) });
+            all_tiles.push_back(tile_coordinate { 
+                    static_cast<std::uint32_t>(i_x0), 
+                    static_cast<std::uint32_t>(i_y0),
+                    false });
         }
 
         std::int64_t x = i_x0;
@@ -188,10 +222,16 @@ inline void ring_cover(tile_coordinates & partial_ring,
                 y += static_cast<std::int64_t>(sy);
             }
             if (partial_ring.empty() || partial_ring.back().y != y) {
-                partial_ring.push_back(tile_coordinate { static_cast<std::uint32_t>(x), static_cast<std::uint32_t>(y) });
+                partial_ring.push_back(tile_coordinate { 
+                        static_cast<std::uint32_t>(x), 
+                        static_cast<std::uint32_t>(y),
+                        false });
             }
             if (all_tiles.empty() || all_tiles.back().x != x || all_tiles.back().y != y) {
-                all_tiles.push_back(tile_coordinate { static_cast<std::uint32_t>(x), static_cast<std::uint32_t>(y) });
+                all_tiles.push_back(tile_coordinate { 
+                        static_cast<std::uint32_t>(x), 
+                        static_cast<std::uint32_t>(y),
+                        false });
             }
         }
     }
@@ -230,24 +270,18 @@ inline void polygon_cover(tile_coordinates & tiles,
                 }
             }
         }
-        std::sort(all_tiles.begin(), all_tiles.end(), 
-            [](tile_coordinate const& t1, tile_coordinate const& t2) {
-                return t1.y == t2.y ? t1.x < t2.x : t1.y < t2.y;
-            });
+        std::sort(all_tiles.begin(), all_tiles.end());
         all_tiles.erase(std::unique(all_tiles.begin(), all_tiles.end()), all_tiles.end());
         tiles.insert(tiles.end(), all_tiles.begin(), all_tiles.end());
     }
 
-    std::sort(intersections.begin(), intersections.end(), 
-              [](tile_coordinate const& t1, tile_coordinate const& t2) {
-                  return t1.y == t2.y ? t1.x < t2.x : t1.y < t2.y;
-              });
+    std::sort(intersections.begin(), intersections.end());
     for (auto itr = intersections.begin(); itr != intersections.end(); ++itr) {
         auto y = itr->y;
         auto x = itr->x;
         ++itr;
         for (; x < itr->x; x++) {
-            tiles.push_back(tile_coordinate{ x, y });
+            tiles.push_back(tile_coordinate{ x, y, true });
         }
     }
 }
@@ -297,10 +331,7 @@ inline tile_coordinates get_tiles(geometry::geometry<std::int64_t> const& g,
                                   std::int64_t extent) {
     tile_coordinates tiles;
     geometry::geometry<std::int64_t>::visit(g, tile_cover_visitor { extent, tiles } );
-    std::sort(tiles.begin(), tiles.end(), 
-        [](tile_coordinate const& t1, tile_coordinate const& t2) {
-            return t1.y == t2.y ? t1.x < t2.x : t1.y < t2.y;
-        });
+    std::sort(tiles.begin(), tiles.end());
     tiles.erase(std::unique(tiles.begin(), tiles.end()), tiles.end());
     return tiles;
 }

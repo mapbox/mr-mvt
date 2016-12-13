@@ -33,4 +33,4 @@ build/all: mason_packages
 
 test: build/all
 	rm -f out.mbtiles
-	time cat test/fixtures/countries.geojson | ./m2f foo | ./m2z --min 0 --max 6 | ./m2t | sort | ./r2mvt out.mbtiles
+	time cat test/fixtures/countries.geojson | ./m2f foo | ./m2z --min 0 --max 10 | ./m2t | sort | ./r2mvt out.mbtiles
