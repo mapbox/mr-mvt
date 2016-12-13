@@ -1,1 +1,8 @@
 mason_packages
+.DS_Store
+m2f
+m2t
+m2z
+*.dSYM/
+out.mbtiles
+r2mvt
