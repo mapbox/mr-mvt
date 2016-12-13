@@ -125,20 +125,39 @@ struct clip_visitor {
         if (poly.empty()) {
             return optional_geometry();
         }
-        geometry::linear_ring<std::int64_t> clip_box;
-        clip_box.reserve(4);
-        clip_box.push_back(geometry::point<std::int64_t> { b.min_x, b.min_y } );
-        clip_box.push_back(geometry::point<std::int64_t> { b.min_x, b.max_y } );
-        clip_box.push_back(geometry::point<std::int64_t> { b.max_x, b.max_y } );
-        clip_box.push_back(geometry::point<std::int64_t> { b.max_x, b.min_y } );
-        clip_box.push_back(geometry::point<std::int64_t> { b.min_x, b.min_y } );
-        
+        geometry::polygon<std::int64_t> new_poly;
+        new_poly.reserve(new_poly.size());
+        for (auto const& lr : poly) {
+            geometry::linear_ring<std::int64_t> new_lr;
+            new_lr.reserve(lr.size());
+            for (auto const& pt : lr) {
+                geometry::point<std::int64_t> new_pt = pt;
+                if (new_pt.x < b.min_x) {
+                    new_pt.x = b.min_x;
+                } else if (new_pt.x > b.max_x) {
+                    new_pt.x = b.max_x;
+                }
+                if (new_pt.y < b.min_y) {
+                    new_pt.y = b.min_y;
+                } else if (new_pt.y > b.max_y) {
+                    new_pt.y = b.max_y;
+                }
+                if (new_lr.empty() || new_lr.back() != new_pt) {
+                    new_lr.push_back(new_pt);
+                }
+            }
+            if (new_lr.size() > 3) {
+                new_poly.push_back(new_lr);
+            }
+        }
+        if (new_poly.empty()) {
+            return optional_geometry();
+        }
         mapbox::geometry::wagyu::wagyu<std::int64_t> clipper;
-        clipper.add_ring(clip_box, mapbox::geometry::wagyu::polygon_type_clip);
-        clipper.add_polygon(poly);
+        clipper.add_polygon(new_poly);
 
         mapbox::geometry::multi_polygon<std::int64_t> solution;
-        clipper.execute(mapbox::geometry::wagyu::clip_type_intersection, solution,
+        clipper.execute(mapbox::geometry::wagyu::clip_type_union, solution,
                         mapbox::geometry::wagyu::fill_type_positive,
                         mapbox::geometry::wagyu::fill_type_even_odd);
         multi_polygon_offset(solution, b.unbuffered_min_x, b.unbuffered_min_y);
@@ -155,23 +174,50 @@ struct clip_visitor {
         if (mp.empty()) {
             return optional_geometry();
         }
-        geometry::linear_ring<std::int64_t> clip_box;
-        clip_box.reserve(4);
-        clip_box.push_back(geometry::point<std::int64_t> { b.min_x, b.min_y } );
-        clip_box.push_back(geometry::point<std::int64_t> { b.min_x, b.max_y } );
-        clip_box.push_back(geometry::point<std::int64_t> { b.max_x, b.max_y } );
-        clip_box.push_back(geometry::point<std::int64_t> { b.max_x, b.min_y } );
-        clip_box.push_back(geometry::point<std::int64_t> { b.min_x, b.min_y } );
+        geometry::multi_polygon<std::int64_t> new_mp;
+        new_mp.reserve(mp.size());
+        for (auto const& poly : mp) {
+            geometry::polygon<std::int64_t> new_poly;
+            new_poly.reserve(new_poly.size());
+            for (auto const& lr : poly) {
+                geometry::linear_ring<std::int64_t> new_lr;
+                new_lr.reserve(lr.size());
+                for (auto const& pt : lr) {
+                    geometry::point<std::int64_t> new_pt = pt;
+                    if (new_pt.x < b.min_x) {
+                        new_pt.x = b.min_x;
+                    } else if (new_pt.x > b.max_x) {
+                        new_pt.x = b.max_x;
+                    }
+                    if (new_pt.y < b.min_y) {
+                        new_pt.y = b.min_y;
+                    } else if (new_pt.y > b.max_y) {
+                        new_pt.y = b.max_y;
+                    }
+                    if (new_lr.empty() || new_lr.back() != new_pt) {
+                        new_lr.push_back(new_pt);
+                    }
+                }
+                if (new_lr.size() > 3) {
+                    new_poly.push_back(new_lr);
+                }
+            }
+            if (new_poly.empty()) {
+                new_mp.push_back(new_poly);
+            }
+        }
+        if (new_mp.empty()) {
+            return optional_geometry();
+        }
         
         mapbox::geometry::wagyu::wagyu<std::int64_t> clipper;
-        clipper.add_ring(clip_box, mapbox::geometry::wagyu::polygon_type_clip);
         
-        for (auto const& poly : mp) {
-            clipper.add_polygon(poly);
+        for (auto const& new_poly : new_mp) {
+            clipper.add_polygon(new_poly);
         }
 
         mapbox::geometry::multi_polygon<std::int64_t> solution;
-        clipper.execute(mapbox::geometry::wagyu::clip_type_intersection, solution,
+        clipper.execute(mapbox::geometry::wagyu::clip_type_union, solution,
                         mapbox::geometry::wagyu::fill_type_positive,
                         mapbox::geometry::wagyu::fill_type_even_odd);
         multi_polygon_offset(solution, b.unbuffered_min_x, b.unbuffered_min_y);
