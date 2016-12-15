@@ -126,20 +126,24 @@ struct to_tile_coord_visitor {
     }
 };
 
-inline geometry::geometry<std::int64_t> geom_to_zoom(geometry::geometry<double> g, std::size_t z) {
-    std::int64_t extent = 4096;
+inline geometry::geometry<std::int64_t> geom_to_zoom(geometry::geometry<double> g, 
+                                                     std::size_t z,
+                                                     std::size_t extent,
+                                                     double simplify_distance) {
     double size = extent * std::pow(2, z);
-    return geometry::geometry<double>::visit(g, to_tile_coord_visitor { size });
+    return geometry::geometry<double>::visit(g, to_tile_coord_visitor { size, simplify_distance });
 }
 
 inline void map_feature_to_zoom(std::string const& layer_name,
                                 std::string const& feature_str,
                                 std::size_t min_z,
-                                std::size_t max_z) {
+                                std::size_t max_z,
+                                std::size_t extent = 4096,
+                                double simplify_distance = 4.0) {
     auto feature = geojson::parse_feature<double>(feature_str);
     for (auto z = min_z; z <= max_z; ++z) {
         geometry::feature<std::int64_t> f { 
-            geom_to_zoom(feature.geometry, z), 
+            geom_to_zoom(feature.geometry, z, extent, simplify_distance), 
             feature.properties, 
             feature.id
         };

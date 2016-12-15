@@ -76,7 +76,7 @@ using tile_coordinates = std::vector<tile_coordinate>;
 
 inline tile_coordinate point_to_tile(geometry::point<std::int64_t> const& pt, 
                                      std::uint32_t extent) {
-    return tile_coordinate { static_cast<std::uint32_t>(pt.x / extent), static_cast<std::uint32_t>(pt.y / extent) };
+    return tile_coordinate { static_cast<std::uint32_t>(pt.x / extent), static_cast<std::uint32_t>(pt.y / extent), false };
 }
 
 inline bool almost_zero(double val) {

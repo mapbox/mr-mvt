@@ -6,3 +6,6 @@ m2z
 *.dSYM/
 out.mbtiles
 r2mvt
+lib/binding/
+build/
+node_modules
