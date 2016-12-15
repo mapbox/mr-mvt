@@ -7,8 +7,8 @@
 #include <stdexcept>
 #include <iostream>
 
-MapToZoom::MapToZoom(char const* json) : 
-    geom(mapbox::geojson::parse_geometry<double>(json)) {
+MapToZoom::MapToZoom(char const* json, std::size_t size) : 
+    geom(mapbox::geojson::parse_geometry<double>(json, size)) {
 }
 
 void MapToZoom::Initialize(v8::Handle<v8::Object> target) {
@@ -51,12 +51,13 @@ NAN_METHOD(MapToZoom::New) {
     if (obj->IsNull() || obj->IsUndefined() || !node::Buffer::HasInstance(obj)) {
         return Nan::ThrowTypeError("arg must be a buffer");
     }
-    if (node::Buffer::Length(obj) <= 0) {
+    std::size_t json_size = node::Buffer::Length(obj);
+    if (json_size <= 0) {
         return Nan::ThrowTypeError("buffer is empty");
     }
     try {
         const char* json = node::Buffer::Data(obj);
-        auto *const self = new MapToZoom(json);
+        auto *const self = new MapToZoom(json, json_size);
         self->Wrap(info.This());
     } catch (const std::exception &ex) {
         std::string err_msg = "Error in processing buffer: ";

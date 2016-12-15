@@ -15,7 +15,7 @@
  */
 class MapToZoom: public Nan::ObjectWrap {
     public:
-        MapToZoom(const char* json);
+        MapToZoom(const char* json, std::size_t size);
         
         // initializer
         static void Initialize(v8::Handle<v8::Object> target);
