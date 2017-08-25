@@ -1,9 +1,12 @@
 #pragma once
 
+#include <iostream>
 #ifdef DEBUG
 #include <sstream>
 #endif
 
+#include <mapbox/geometry/box.hpp>
+#include <mapbox/geometry/wagyu/quick_clip.hpp>
 #include <mapbox/geometry/wagyu/wagyu.hpp>
 
 #include <experimental/optional>
@@ -11,25 +14,49 @@
 namespace mapbox { namespace mrmvt {
 
 using optional_geometry = std::experimental::optional<geometry::geometry<std::int64_t>>;
+using optional_linear_ring = std::experimental::optional<geometry::linear_ring<std::int64_t>>;
 
-struct bbox {
-    std::int64_t min_x;
-    std::int64_t max_x;
-    std::int64_t min_y;
-    std::int64_t max_y;
-    std::int64_t unbuffered_min_x;
-    std::int64_t unbuffered_min_y;
-};
+template <class charT, class traits, typename T>
+inline std::basic_ostream<charT, traits>& operator<<(std::basic_ostream<charT, traits>& out,
+                                                     const geometry::linear_ring<T>& ring) {
+    out << "[";
+    bool first = true;
+    for (auto const& pt: ring) {
+        if (first) {
+            out << "[";
+            first = false;
+        } else {
+            out << ",[";
+        }
+        out << pt.x << "," << pt.y << "]";
+    }
+    out << "]";
+    return out;
+}
 
-inline bbox create_bbox(std::uint32_t x, std::uint32_t y, std::int64_t buffer) {
+template <class charT, class traits, typename T>
+inline std::basic_ostream<charT, traits>& operator<<(std::basic_ostream<charT, traits>& out,
+                                                     const geometry::polygon<T>& poly) {
+    out << "[";
+    bool first = true;
+    for (auto const& ring: poly) {
+        if (first) {
+            first = false;
+        } else {
+            out << ",";
+        }
+        out << ring;
+    }
+    out << "]";
+    return out;
+}
+
+inline geometry::box<std::int64_t> create_bbox(std::int64_t x, std::int64_t y, std::int64_t buffer) {
     std::int64_t min_x = static_cast<std::int64_t>(x * 4096);
     std::int64_t min_y = static_cast<std::int64_t>(y * 4096);
-    return bbox { min_x - buffer, 
-                  min_x + 4095 + buffer, 
-                  min_y - buffer, 
-                  min_y + 4095 + buffer,
-                  min_x,
-                  min_y }; 
+    geometry::point<std::int64_t> min(min_x - buffer,  min_y - buffer);
+    geometry::point<std::int64_t> max(min_x + 4096 + buffer,  min_y + 4096 + buffer);
+    return geometry::box<std::int64_t>(min, max);
 }
 
 inline void multi_polygon_offset(geometry::multi_polygon<std::int64_t> & mp,
@@ -47,14 +74,16 @@ inline void multi_polygon_offset(geometry::multi_polygon<std::int64_t> & mp,
 
 struct clip_visitor {
 
-    bbox b;
+    geometry::box<std::int64_t> b;
+    std::int64_t offset_x;
+    std::int64_t offset_y;
 
     optional_geometry operator() (geometry::point<std::int64_t> const& pt) const {
-        if (pt.x >= b.min_x && 
-            pt.x <= b.max_x &&
-            pt.y >= b.min_y &&
-            pt.y <= b.max_y) {
-            geometry::point<std::int64_t> new_pt { pt.x - b.unbuffered_min_x, pt.y - b.unbuffered_min_y };
+        if (pt.x >= b.min.x && 
+            pt.x <= b.max.x &&
+            pt.y >= b.min.y &&
+            pt.y <= b.max.y) {
+            geometry::point<std::int64_t> new_pt { pt.x - offset_x, pt.y - offset_y };
             return optional_geometry(geometry::geometry<std::int64_t>(new_pt));
         }
         return optional_geometry();
@@ -64,11 +93,11 @@ struct clip_visitor {
         geometry::multi_point<std::int64_t> new_mp;
         new_mp.reserve(mp.size());
         for (auto const& pt : mp) {
-            if (pt.x >= b.min_x && 
-                pt.x <= b.max_x &&
-                pt.y >= b.min_y &&
-                pt.y <= b.max_y) {
-                geometry::point<std::int64_t> new_pt { pt.x - b.unbuffered_min_x, pt.y - b.unbuffered_min_y };
+            if (pt.x >= b.min.x && 
+                pt.x <= b.max.x &&
+                pt.y >= b.min.y &&
+                pt.y <= b.max.y) {
+                geometry::point<std::int64_t> new_pt { pt.x - offset_x, pt.y - offset_y };
                 new_mp.push_back(new_pt);
             }
         }
@@ -78,15 +107,15 @@ struct clip_visitor {
         return optional_geometry(geometry::geometry<std::int64_t>(std::move(new_mp)));
     }
 
-    optional_geometry operator() (geometry::line_string<std::int64_t> const& ls) {
+    optional_geometry operator() (geometry::line_string<std::int64_t> const& ls) const {
         geometry::line_string<std::int64_t> new_ls;
         new_ls.reserve(ls.size());
         for (auto const& pt : ls) {
-            if (pt.x >= b.min_x && 
-                pt.x <= b.max_x &&
-                pt.y >= b.min_y &&
-                pt.y <= b.max_y) {
-                geometry::point<std::int64_t> new_pt { pt.x - b.unbuffered_min_x, pt.y - b.unbuffered_min_y };
+            if (pt.x >= b.min.x && 
+                pt.x <= b.max.x &&
+                pt.y >= b.min.y &&
+                pt.y <= b.max.y) {
+                geometry::point<std::int64_t> new_pt { pt.x - offset_x, pt.y - offset_y };
                 new_ls.push_back(new_pt);
             }
         }
@@ -96,18 +125,18 @@ struct clip_visitor {
         return optional_geometry(geometry::geometry<std::int64_t>(std::move(new_ls)));
     }
 
-    optional_geometry operator() (geometry::multi_line_string<std::int64_t> const& mls) {
+    optional_geometry operator() (geometry::multi_line_string<std::int64_t> const& mls) const {
         geometry::multi_line_string<std::int64_t> new_mls;
         new_mls.reserve(mls.size());
         for (auto const& ls : mls) {
             geometry::line_string<std::int64_t> new_ls;
             new_ls.reserve(ls.size());
             for (auto const& pt : ls) {
-                if (pt.x >= b.min_x && 
-                    pt.x <= b.max_x &&
-                    pt.y >= b.min_y &&
-                    pt.y <= b.max_y) {
-                    geometry::point<std::int64_t> new_pt { pt.x - b.unbuffered_min_x, pt.y - b.unbuffered_min_y };
+                if (pt.x >= b.min.x && 
+                    pt.x <= b.max.x &&
+                    pt.y >= b.min.y &&
+                    pt.y <= b.max.y) {
+                    geometry::point<std::int64_t> new_pt { pt.x - offset_x, pt.y - offset_y };
                     new_ls.push_back(new_pt);
                 }
             }
@@ -121,46 +150,14 @@ struct clip_visitor {
         return optional_geometry(geometry::geometry<std::int64_t>(std::move(new_mls)));
     }
 
-    optional_geometry operator() (geometry::polygon<std::int64_t> const& poly) {
+    optional_geometry operator() (geometry::polygon<std::int64_t> const& poly) const {
         if (poly.empty()) {
             return optional_geometry();
         }
-        geometry::polygon<std::int64_t> new_poly;
-        new_poly.reserve(new_poly.size());
-        for (auto const& lr : poly) {
-            geometry::linear_ring<std::int64_t> new_lr;
-            new_lr.reserve(lr.size());
-            for (auto const& pt : lr) {
-                geometry::point<std::int64_t> new_pt = pt;
-                if (new_pt.x < b.min_x) {
-                    new_pt.x = b.min_x;
-                } else if (new_pt.x > b.max_x) {
-                    new_pt.x = b.max_x;
-                }
-                if (new_pt.y < b.min_y) {
-                    new_pt.y = b.min_y;
-                } else if (new_pt.y > b.max_y) {
-                    new_pt.y = b.max_y;
-                }
-                if (new_lr.empty() || new_lr.back() != new_pt) {
-                    new_lr.push_back(new_pt);
-                }
-            }
-            if (new_lr.size() > 3) {
-                new_poly.push_back(new_lr);
-            }
-        }
-        if (new_poly.empty()) {
-            return optional_geometry();
-        }
-        mapbox::geometry::wagyu::wagyu<std::int64_t> clipper;
-        clipper.add_polygon(new_poly);
-
-        mapbox::geometry::multi_polygon<std::int64_t> solution;
-        clipper.execute(mapbox::geometry::wagyu::clip_type_union, solution,
-                        mapbox::geometry::wagyu::fill_type_positive,
-                        mapbox::geometry::wagyu::fill_type_even_odd);
-        multi_polygon_offset(solution, b.unbuffered_min_x, b.unbuffered_min_y);
+        auto solution = geometry::wagyu::clip<std::int64_t>(poly,
+                                              b,
+                                              geometry::wagyu::fill_type_positive);
+        multi_polygon_offset(solution, offset_x, offset_y);
         if (solution.empty()) {
             return optional_geometry();
         } else if (solution.size() == 1) {
@@ -170,57 +167,14 @@ struct clip_visitor {
         }
     }
     
-    optional_geometry operator() (geometry::multi_polygon<std::int64_t> const& mp) {
+    optional_geometry operator() (geometry::multi_polygon<std::int64_t> const& mp) const {
         if (mp.empty()) {
             return optional_geometry();
         }
-        geometry::multi_polygon<std::int64_t> new_mp;
-        new_mp.reserve(mp.size());
-        for (auto const& poly : mp) {
-            geometry::polygon<std::int64_t> new_poly;
-            new_poly.reserve(new_poly.size());
-            for (auto const& lr : poly) {
-                geometry::linear_ring<std::int64_t> new_lr;
-                new_lr.reserve(lr.size());
-                for (auto const& pt : lr) {
-                    geometry::point<std::int64_t> new_pt = pt;
-                    if (new_pt.x < b.min_x) {
-                        new_pt.x = b.min_x;
-                    } else if (new_pt.x > b.max_x) {
-                        new_pt.x = b.max_x;
-                    }
-                    if (new_pt.y < b.min_y) {
-                        new_pt.y = b.min_y;
-                    } else if (new_pt.y > b.max_y) {
-                        new_pt.y = b.max_y;
-                    }
-                    if (new_lr.empty() || new_lr.back() != new_pt) {
-                        new_lr.push_back(new_pt);
-                    }
-                }
-                if (new_lr.size() > 3) {
-                    new_poly.push_back(new_lr);
-                }
-            }
-            if (new_poly.empty()) {
-                new_mp.push_back(new_poly);
-            }
-        }
-        if (new_mp.empty()) {
-            return optional_geometry();
-        }
-        
-        mapbox::geometry::wagyu::wagyu<std::int64_t> clipper;
-        
-        for (auto const& new_poly : new_mp) {
-            clipper.add_polygon(new_poly);
-        }
-
-        mapbox::geometry::multi_polygon<std::int64_t> solution;
-        clipper.execute(mapbox::geometry::wagyu::clip_type_union, solution,
-                        mapbox::geometry::wagyu::fill_type_positive,
-                        mapbox::geometry::wagyu::fill_type_even_odd);
-        multi_polygon_offset(solution, b.unbuffered_min_x, b.unbuffered_min_y);
+        auto solution = geometry::wagyu::clip<std::int64_t>(mp,
+                                                 b,
+                                                 geometry::wagyu::fill_type_positive);
+        multi_polygon_offset(solution, offset_x, offset_y);
         if (solution.empty()) {
             return optional_geometry();
         } else if (solution.size() == 1) {
@@ -230,7 +184,7 @@ struct clip_visitor {
         }
     }
 
-    optional_geometry operator() (geometry::geometry_collection<std::int64_t> const& gc) {
+    optional_geometry operator() (geometry::geometry_collection<std::int64_t> const& gc) const {
         geometry::geometry_collection<std::int64_t> new_gc;
         new_gc.reserve(gc.size());
         for (auto const& g : gc) {
@@ -248,7 +202,10 @@ struct clip_visitor {
 
 inline optional_geometry clip(geometry::geometry<std::int64_t> const& g, std::uint32_t x, std::uint32_t y, std::int64_t buffer) {
     auto bbox = create_bbox(x, y, buffer);
-    return geometry::geometry<std::int64_t>::visit(g, clip_visitor { bbox });
+    std::int64_t offset_x = bbox.min.x + buffer;
+    std::int64_t offset_y = bbox.min.y + buffer;
+    clip_visitor visitor { bbox, offset_x, offset_y };
+    return geometry::geometry<std::int64_t>::visit(g, visitor);
 }
 
 }}

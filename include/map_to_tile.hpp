@@ -20,7 +20,7 @@
 namespace mapbox { namespace mrmvt {
 
 inline void map_to_tile() {
-    std::int64_t buffer = 6;
+    std::int64_t buffer = 8;
     geometry::polygon<std::int64_t> fill_geometry;
     geometry::linear_ring<std::int64_t> fill_ring;
     fill_ring.push_back({-buffer, 4095+buffer});

@@ -29,7 +29,6 @@ class MapToZoom: public Nan::ObjectWrap {
         static void AsyncExecute(uv_work_t* req);
         static void AfterExecute(uv_work_t* req);
 
-
     private:
         // member variable
         // specific to each instance of the class
